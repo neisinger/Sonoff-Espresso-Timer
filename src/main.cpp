@@ -10,7 +10,7 @@
 
 // Defines
 #define VERSION "v1.0"
-#define NAME "SonoffGrinder"
+#define NAME "SonoffEspresso"
 #define SONOFFBASIC // Use Sonoff Basic default Pins
 
 #define ON LOW    // LOW is LED ON
@@ -38,7 +38,7 @@ const int pSCL = 5; // Tx Pin on Sonoff
 const int pSDA = 2; // Rx Pin on Sonoff
 #endif
 
-const unsigned long tMAX = 60000; // Maxmimum Time for grinding
+const unsigned long tMAX = 60000; // Maxmimum Time for brewing
 const unsigned long tOVERLAY = 60000; // show additional information for this period
 const unsigned long tDEBOUNCE = 50; // Debounce Time for Button
 const unsigned long tPRESS = 300; // Time for Button Press Detection
@@ -176,7 +176,7 @@ void handleRoot() {
                         <h3><input type='text' name='date_ss' id='date_ss' size=2 autofocus>  ms</h3> \
                         <h3>Double Shot (Doubleclick): %d ms</h3>\
                         <h3><input type='text' name='date_ds' id='date_ds' size=2 autofocus>  ms</h3> \
-                        <h3>You can press and hold the Button for manual Grinding.<br> If you press and hold after a Click or Doubleclick it will save the Time.</h3>\
+                        <h3>You can press and hold the Button for manual brewing.<br> If you press and hold after a Click or Doubleclick it will save the Time.</h3>\
                         <div>\
                         <br><button id=\"save_button\">Save</button>\
                         </div>\
@@ -252,14 +252,14 @@ void handleDisplay() {
   display.clear();
 
   if((bClick == true || bDoubleClick == true) && bPress == false){
-    // display timer grinding Progress
+    // display timer brewing Progress
     bShowOverlay = false;
     display.setTextAlignment(TEXT_ALIGN_LEFT);
     display.setFont(ArialMT_Plain_10);
     if(bClick == true) {
-      display.drawString(0, 0, "Single Shot Grinding");
+      display.drawString(0, 0, "Single Shot Brewing");
     } else if (bDoubleClick == true) {
-      display.drawString(0, 0, "Double Shot Grinding");
+      display.drawString(0, 0, "Double Shot Brewing");
     }
     display.setTextAlignment(TEXT_ALIGN_RIGHT);
     display.setFont(ArialMT_Plain_16);
@@ -268,7 +268,7 @@ void handleDisplay() {
   }
 
   if(bPress == true){
-    // display manual grinding and setup Progress
+    // display manual brewing and setup Progress
     bShowOverlay = false;
     display.setTextAlignment(TEXT_ALIGN_LEFT);
     display.setFont(ArialMT_Plain_10);
@@ -277,7 +277,7 @@ void handleDisplay() {
     } else if (bDoubleClick == true) {
       display.drawString(0, 0, "Saving Double Shot Time");
     } else {
-      display.drawString(0, 0, "Manual Grinding");
+      display.drawString(0, 0, "Manual Brewing");
     }
     display.setTextAlignment(TEXT_ALIGN_RIGHT);
     display.setFont(ArialMT_Plain_16);
@@ -329,7 +329,7 @@ void handleDisplay() {
 void setup() {
   //Serial.begin(115200); // Start serial
 
-  pinMode(pGRINDER, OUTPUT);      // define Grinder output Pin
+  pinMode(pGRINDER, OUTPUT);      // define Brewer output Pin
   digitalWrite(pGRINDER, LOW);    // turn Relais OFF
   pinMode(pLED, OUTPUT);
   digitalWrite(pLED, ON);         // turn LED ON at start
