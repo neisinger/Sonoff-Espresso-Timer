@@ -1,5 +1,5 @@
-# SonoffGrinder
-This is a Coffee Machine Controller with a Sonoff Basic as a Timer.
+# SonoffEspressoTimer
+This is a Coffee Machine Controller with a Sonoff Basic as a Timer. This project doesn't attempt to create a PID for any Espresso machine, but be the simplest single- & double-shot timer that can be integrated.
 
 ## Setup
 Connect the Pump of the Coffee Machine to the Output of the Sonoff and the Pushbutton to GPIO 14 and Ground.
