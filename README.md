@@ -13,10 +13,16 @@ I'm using an old (1996) Elektra Cappuccina R1 as basis for this project, so no g
 This is the original Circuit Diagram of the Elektra coffee machine.
 
 ![circuit diagram Elektra Cappuccina original](/images/circuit_elektra_orig.png)
+
 I tried to make my own diagram, so it's easier to understand what is going on.
+
 ![circuit diagram of unmodified Elektra](/images/circuit_diag_elektra_orig.png)
+
+The workings of this machine are very easy. Basically the power switch gives power to the machine and it immediately starts heating up until the 95°C breaker opens. If you want to brew Espresso you push the espresso button which gives power to the pump for as long as you have the switch pushed. I will ignore the steam part, as I don't use it.
+
 ![circuit diagram with added Sonoff Timer](/images/circuit_diag_elektra_sonoff.png)
 
+Basically I just replace the espresso button with the flashed Sonoff timer and use the original push button as input for the Sonoff timer.
 
 ## Usage
 The Controller tries to connect to specified WiFi. Just set up your local Wifi in Code before flashing the Sonoff.
