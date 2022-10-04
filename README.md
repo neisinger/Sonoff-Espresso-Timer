@@ -5,6 +5,16 @@ This is a Coffee Machine Controller with a Sonoff Basic as a Timer. This project
 Connect the Pump of the Coffee Machine to the Output of the Sonoff and the Pushbutton to GPIO 14 and Ground.
 Connect TX to SCK and RX to SDA of the Display. (0,96" OLED)
 
+## Elektra Cappuccina
+I'm using an old (1996) Elektra Cappuccina R1 as basis for this project, so no guarantees this might work on different machines (though it should).
+
+## Circuit Diagram
+
+This is the original Circuit Diagram of the Elektra coffee machine.
+
+![circuit diagram Elektra Cappuccina original](\images\circuit_elektra_orig.png)
+
+
 
 ## Usage
 The Controller tries to connect to specified WiFi. Just set up your local Wifi in Code before flashing the Sonoff.
