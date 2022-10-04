@@ -25,7 +25,7 @@ The workings of this machine are very easy. Basically the power switch gives pow
 Basically I just replace the espresso button with the flashed Sonoff timer and use the original push button as input for the Sonoff timer.
 
 ## Usage
-The Controller tries to connect to specified WiFi. Just set up your local Wifi in Code before flashing the Sonoff.
+The Controller tries to connect to specified WiFi. Add your credentials in this file: /src/main.cpp under Configuration.
 You can connect to the Sonoff by typing "SonoffEspresso/" or the IP in your Webbrowser.
 The Webinterface is presented to programm the pumping Time for single and double Shot.
 
@@ -37,7 +37,7 @@ There are 3 Operation-Modes:
 If you push the button again while the machine is brewing the machine will stop.
 
 Saving new Times:
-- Start Single- or Doubleshot brweing
+- Start Single- or Doubleshot brewing
 - Push the Button again and hold as long as you want
 - New brewing Time is saved for Single- or Doubleshot
 
