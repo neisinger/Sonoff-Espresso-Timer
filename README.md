@@ -41,6 +41,6 @@ Saving new Times:
 - Push the Button again and hold as long as you want
 - New brewing Time is saved for Single- or Doubleshot
 
-
+## Thanks
 This project is a modificatin of ljans sonoffgrinder https://github.com/ljan/sonoffgrinder
 Thanks to timo.helfer @ www.kaffeenetz.de for the inspiration and codebase.
