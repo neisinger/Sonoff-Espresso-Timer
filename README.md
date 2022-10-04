@@ -13,7 +13,9 @@ I'm using an old (1996) Elektra Cappuccina R1 as basis for this project, so no g
 This is the original Circuit Diagram of the Elektra coffee machine.
 
 ![circuit diagram Elektra Cappuccina original](/images/circuit_elektra_orig.png)
-
+I tried to make my own diagram, so it's easier to understand what is going on.
+![circuit diagram of unmodified Elektra](/images/circuit_diag_elektra_orig.png)
+![circuit diagram with added Sonoff Timer](/images/circuit_diag_elektra_sonoff.png)
 
 
 ## Usage
