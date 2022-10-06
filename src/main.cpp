@@ -10,27 +10,27 @@
 
 // Defines
 #define VERSION "v1.0"
-#define NAME "SonoffEspresso"
+#define NAME "SonoffEspresso" // changed the name from SonoffGrinder to SonoffEspresso
 #define SONOFFBASIC // Use Sonoff Basic default Pins
 
 #define ON LOW    // LOW is LED ON
 #define OFF HIGH  // HIGH is LED OFF
 
 // Configuration
-const char* cSSID     = "coffee";
-const char* cPASSWORD = "coffeecoffee";
+const char* cSSID     = "coffee"; // put your Wifi SSID (name) here
+const char* cPASSWORD = "coffeecoffee"; // put your Wifi password here
 
-const bool bFlipDisplay = true;
+const bool bFlipDisplay = true; //
 
 #ifdef SONOFFBASIC
-const int pGRINDER = 12; // Relay Pin of Sonoff
+const int pESPRESSO = 12; // Relay Pin of Sonoff
 const int pLED = 13; // LED Pin of Sonoff
 const int pBUTTON = 14; // GPIO14, last Pin on Header
 
 const int pSCL = 1; // Tx Pin on Sonoff
 const int pSDA = 3; // Rx Pin on Sonoff
 #else // Custom or Development Board
-const int pGRINDER = 12; // Relay Pin of Sonoff
+const int pESPRESSO = 12; // Relay Pin of Sonoff
 const int pLED = 16; // LED Pin of Sonoff
 const int pBUTTON = 0; // GPIO14, last Pin on Header
 
@@ -52,32 +52,32 @@ bool bPress = false;
 bool bWifiConnected = true; // initialize true to start Connection
 bool bShowOverlay = true; // initialize true
 
-int tSingleShot = 5000;
-int tDualShot = 10000;
+int tSingleShot = 25000; // brewing time for a single shot of Espresso in milliseconds
+int tDualShot = 20000; //  brewing time for a double shot of Espresso in milliseconds
 
-int tGrindDuration = 0;
-int tGrindPeriod = 0;
-unsigned long tGrindStart = 0;
+int tEspressoDuration = 0;
+int tEspressoPeriod = 0;
+unsigned long tEspressoStart = 0;
 
-os_timer_t timerGRINDER;
+os_timer_t timerEspresso;
 
 ESP8266WebServer server (80);
 TTBOUNCE button = TTBOUNCE(pBUTTON);
 SSD1306Brzo  display(0x3c, pSDA, pSCL); // ADDRESS, SDA, SCL
 
 void click() {
-  if (digitalRead(pGRINDER) == LOW) {
-    digitalWrite(pGRINDER, HIGH);  // turn Relais ON
-    os_timer_arm(&timerGRINDER, tSingleShot, false);
+  if (digitalRead(pESPRESSO) == LOW) {
+    digitalWrite(pESPRESSO, HIGH);  // turn Relais ON
+    os_timer_arm(&timerESPRESSO, tSingleShot, false);
     bClick = true;
-    tGrindPeriod = tSingleShot;
-    tGrindStart = millis();
+    tEspressoPeriod = tSingleShot;
+    tEspressoStart = millis();
     //Serial.println("Clicked");
     //Serial.println("Relais " + String(tSingleShot, DEC) + " ms ON");
     digitalWrite(pLED, ON);
   } else {
-    digitalWrite(pGRINDER, LOW);
-    os_timer_disarm(&timerGRINDER);
+    digitalWrite(pESPRESSO, LOW);
+    os_timer_disarm(&timerESPRESSO);
     bClick = false;
     bDoubleClick = false;
     //Serial.println("Abort!");
@@ -87,18 +87,18 @@ void click() {
 }
 
 void doubleClick() {
-  if (digitalRead(pGRINDER) == LOW) {
-    digitalWrite(pGRINDER, HIGH);  // turn Relais ON
-    os_timer_arm(&timerGRINDER, tDualShot, false);
+  if (digitalRead(pESPRESSO) == LOW) {
+    digitalWrite(pESPRESSO, HIGH);  // turn Relais ON
+    os_timer_arm(&timerESPRESSO, tDualShot, false);
     bDoubleClick = true;
-    tGrindPeriod = tDualShot;
-    tGrindStart = millis();
+    tEspressoPeriod = tDualShot;
+    tEspressoStart = millis();
     //Serial.println("DoubleClicked");
     //Serial.println("Relais " + String(tDualShot, DEC) + " ms ON");
     digitalWrite(pLED, ON);
   } else {
-    digitalWrite(pGRINDER, LOW);
-    os_timer_disarm(&timerGRINDER);
+    digitalWrite(pESPRESSO, LOW);
+    os_timer_disarm(&timerESPRESSO);
     bClick = false;
     bDoubleClick = false;
     //Serial.println("Abort!");
@@ -108,22 +108,22 @@ void doubleClick() {
 }
 
 void press() {
-  if(digitalRead(pGRINDER) == LOW || (bClick == true || bDoubleClick == true)) {
-    digitalWrite(pGRINDER, HIGH);  // turn Relais ON
+  if(digitalRead(pESPRESSO) == LOW || (bClick == true || bDoubleClick == true)) {
+    digitalWrite(pESPRESSO, HIGH);  // turn Relais ON
     bPress = true;
-    tGrindPeriod = tMAX;
+    tEspressoPeriod = tMAX;
     if (bClick == false && bDoubleClick == false) {
-      os_timer_arm(&timerGRINDER, tMAX, false);
-      tGrindStart = millis(); // only initialize if manual Mode
+      os_timer_arm(&timerESPRESSO, tMAX, false);
+      tEspressoStart = millis(); // only initialize if manual Mode
     } else {
-      os_timer_arm(&timerGRINDER, tMAX - (millis() - tGrindStart), false);
+      os_timer_arm(&timerESPRESSO, tMAX - (millis() - tEspressoStart), false);
     }
     //Serial.println("Pressed");
     //Serial.println("Relais ON");
     digitalWrite(pLED, ON);
   } else {
-    digitalWrite(pGRINDER, LOW);
-    os_timer_disarm(&timerGRINDER);
+    digitalWrite(pESPRESSO, LOW);
+    os_timer_disarm(&timerESPRESSO);
     bPress = false;
     //Serial.println("Abort!");
     //Serial.println("Relais OFF");
@@ -133,11 +133,11 @@ void press() {
 
 void timerCallback(void *pArg) {
   // start of timerCallback
-  digitalWrite(pGRINDER, LOW);
+  digitalWrite(pESPRESSO, LOW);
   //Serial.println("Timer expired");
   //Serial.println("Relais OFF");
   digitalWrite(pLED, OFF);
-  os_timer_disarm(&timerGRINDER);
+  os_timer_disarm(&timerESPRESSO);
   bClick = false;
   bDoubleClick = false;
   bPress = false;
@@ -263,8 +263,8 @@ void handleDisplay() {
     }
     display.setTextAlignment(TEXT_ALIGN_RIGHT);
     display.setFont(ArialMT_Plain_16);
-    display.drawString(128, 16, String((millis() - tGrindStart)/1000.0,2) + "/" + String(tGrindPeriod/1000.0,2) + " s");
-    display.drawProgressBar(0, 38, 127, 10, (millis() - tGrindStart) / (tGrindPeriod / 100));
+    display.drawString(128, 16, String((millis() - tEspressoStart)/1000.0,2) + "/" + String(tEspressoPeriod/1000.0,2) + " s");
+    display.drawProgressBar(0, 38, 127, 10, (millis() - tEspressoStart) / (tEspressoPeriod / 100));
   }
 
   if(bPress == true){
@@ -281,8 +281,8 @@ void handleDisplay() {
     }
     display.setTextAlignment(TEXT_ALIGN_RIGHT);
     display.setFont(ArialMT_Plain_16);
-    display.drawString(128, 16, String(millis() - tGrindStart) + " ms");
-    display.drawProgressBar(0, 38, 127, 10, (millis() - tGrindStart) / (tGrindPeriod / 100));
+    display.drawString(128, 16, String(millis() - tEspressoStart) + " ms");
+    display.drawProgressBar(0, 38, 127, 10, (millis() - tEspressoStart) / (tEspressoPeriod / 100));
   }
 
   if(bClick == false && bDoubleClick == false && bPress == false){
@@ -329,8 +329,8 @@ void handleDisplay() {
 void setup() {
   //Serial.begin(115200); // Start serial
 
-  pinMode(pGRINDER, OUTPUT);      // define Brewer output Pin
-  digitalWrite(pGRINDER, LOW);    // turn Relais OFF
+  pinMode(pESPRESSO, OUTPUT);      // define Brewer output Pin
+  digitalWrite(pESPRESSO, LOW);    // turn Relais OFF
   pinMode(pLED, OUTPUT);
   digitalWrite(pLED, ON);         // turn LED ON at start
 
@@ -347,7 +347,7 @@ void setup() {
   server.begin();
   //Serial.println ( "HTTP Server started" );
 
-  os_timer_setfn(&timerGRINDER, timerCallback, NULL);
+  os_timer_setfn(&timerESPRESSO, timerCallback, NULL);
 
   button.setActiveLow(); button.enablePullup();   // Button from GPIO directly to GND, ebable internal pullup
   button.setDebounceInterval(tDEBOUNCE);
@@ -384,7 +384,7 @@ void setup() {
     // NOTE: if updating FS this would be the place to unmount FS using FS.end()
     //Serial.println("Start updating " + type);
     digitalWrite(pLED, ON);
-    os_timer_arm(&timerGRINDER, 0, false); // instantly fire Timer
+    os_timer_arm(&timerESPRESSO, 0, false); // instantly fire Timer
   });
   ArduinoOTA.onEnd([]() {
     //Serial.println("\nEnd");
@@ -450,20 +450,20 @@ void loop() {
   if(bPress == true) {
     // Press was detected
     if(button.read() == LOW) { // wait for Button release
-      tGrindDuration = millis() - tGrindStart;
-      os_timer_arm(&timerGRINDER, 0, false); // instantly fire Timer
+      tEspressoDuration = millis() - tEspressoStart;
+      os_timer_arm(&timerESPRESSO, 0, false); // instantly fire Timer
       bPress = false;
       if (bClick == true) {
-        eeWriteInt(0, tGrindDuration); // safe single Shot Time
+        eeWriteInt(0, tEspressoDuration); // safe single Shot Time
         bClick = false;
-        tSingleShot = tGrindDuration;
-        //Serial.println("Single Shot set to " + String(tGrindDuration, DEC) + " ms");
+        tSingleShot = tEspressoDuration;
+        //Serial.println("Single Shot set to " + String(tEspressoDuration, DEC) + " ms");
       }
       else if (bDoubleClick == true) {
-        eeWriteInt(4, tGrindDuration); // safe double Shot Time
+        eeWriteInt(4, tEspressoDuration); // safe double Shot Time
         bDoubleClick = false;
-        tDualShot = tGrindDuration;
-        //Serial.println("Double Shot set to " + String(tGrindDuration, DEC) + " ms");
+        tDualShot = tEspressoDuration;
+        //Serial.println("Double Shot set to " + String(tEspressoDuration, DEC) + " ms");
       }
     }
   }
