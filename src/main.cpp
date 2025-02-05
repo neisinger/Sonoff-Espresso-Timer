@@ -7,6 +7,7 @@
 #include <EEPROM.h>
 #include <TTBOUNCE.h>
 #include <SSD1306Brzo.h>
+#include <pg.h> // PostgreSQL client library
 
 // Defines
 #define VERSION "v1.0"
@@ -19,6 +20,13 @@
 // Configuration
 const char* cSSID     = "coffee";
 const char* cPASSWORD = "coffeecoffee";
+
+// PostgreSQL Server Configuration
+const char* db_host = "your-database-ip"; // Replace with your actual database IP
+const int db_port = 5432; // Replace with your actual database port
+const char* db_user = "your-username"; // Replace with your actual database username
+const char* db_pass = "your-password"; // Replace with your actual database password
+const char* db_name = "your-database"; // Replace with your actual database name
 
 const bool bFlipDisplay = true;
 
@@ -65,6 +73,21 @@ ESP8266WebServer server (80);
 TTBOUNCE button = TTBOUNCE(pBUTTON);
 SSD1306Brzo  display(0x3c, pSDA, pSCL); // ADDRESS, SDA, SCL
 
+PGconn* conn;
+
+void logGrindEvent(const char* event) {
+  if (conn) {
+    String query = String("INSERT INTO grind_log (event, duration, timestamp) VALUES ('") + event + "', " + String(tGrindDuration) + ", NOW());";
+    PGresult* res = PQexec(conn, query.c_str());
+    if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+      Serial.println("Insert failed");
+    }
+    PQclear(res);
+  } else {
+    Serial.println("No database connection");
+  }
+}
+
 void click() {
   if (digitalRead(pGRINDER) == LOW) {
     digitalWrite(pGRINDER, HIGH);  // turn Relais ON
@@ -72,16 +95,14 @@ void click() {
     bClick = true;
     tGrindPeriod = tSingleShot;
     tGrindStart = millis();
-    //Serial.println("Clicked");
-    //Serial.println("Relais " + String(tSingleShot, DEC) + " ms ON");
+    logGrindEvent("click_start");
     digitalWrite(pLED, ON);
   } else {
     digitalWrite(pGRINDER, LOW);
     os_timer_disarm(&timerGRINDER);
     bClick = false;
     bDoubleClick = false;
-    //Serial.println("Abort!");
-    //Serial.println("Relais OFF");
+    logGrindEvent("click_stop");
     digitalWrite(pLED, OFF);
   }
 }
@@ -93,16 +114,14 @@ void doubleClick() {
     bDoubleClick = true;
     tGrindPeriod = tDualShot;
     tGrindStart = millis();
-    //Serial.println("DoubleClicked");
-    //Serial.println("Relais " + String(tDualShot, DEC) + " ms ON");
+    logGrindEvent("double_click_start");
     digitalWrite(pLED, ON);
   } else {
     digitalWrite(pGRINDER, LOW);
     os_timer_disarm(&timerGRINDER);
     bClick = false;
     bDoubleClick = false;
-    //Serial.println("Abort!");
-    //Serial.println("Relais OFF");
+    logGrindEvent("double_click_stop");
     digitalWrite(pLED, OFF);
   }
 }
@@ -118,15 +137,13 @@ void press() {
     } else {
       os_timer_arm(&timerGRINDER, tMAX - (millis() - tGrindStart), false);
     }
-    //Serial.println("Pressed");
-    //Serial.println("Relais ON");
+    logGrindEvent("press_start");
     digitalWrite(pLED, ON);
   } else {
     digitalWrite(pGRINDER, LOW);
     os_timer_disarm(&timerGRINDER);
     bPress = false;
-    //Serial.println("Abort!");
-    //Serial.println("Relais OFF");
+    logGrindEvent("press_stop");
     digitalWrite(pLED, OFF);
   }
 }
@@ -134,8 +151,7 @@ void press() {
 void timerCallback(void *pArg) {
   // start of timerCallback
   digitalWrite(pGRINDER, LOW);
-  //Serial.println("Timer expired");
-  //Serial.println("Relais OFF");
+  logGrindEvent("timer_expired");
   digitalWrite(pLED, OFF);
   os_timer_disarm(&timerGRINDER);
   bClick = false;
@@ -143,189 +159,6 @@ void timerCallback(void *pArg) {
   bPress = false;
 }
 
-void eeWriteInt(int pos, int val) {
-  byte* p = (byte*) &val;
-  EEPROM.write(pos, *p);
-  EEPROM.write(pos + 1, *(p + 1));
-  EEPROM.write(pos + 2, *(p + 2));
-  EEPROM.write(pos + 3, *(p + 3));
-  EEPROM.commit();
-}
-
-int eeGetInt(int pos) {
-  int val;
-  byte* p = (byte*) &val;
-  *p        = EEPROM.read(pos);
-  *(p + 1)  = EEPROM.read(pos + 1);
-  *(p + 2)  = EEPROM.read(pos + 2);
-  *(p + 3)  = EEPROM.read(pos + 3);
-  return val;
-}
-
-void handleRoot() {
-   snprintf(htmlResponse, 3000,
-              "<!DOCTYPE html>\
-              <html lang=\"en\">\
-                <head>\
-                  <meta charset=\"utf-8\">\
-                  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-                </head>\
-                <body>\
-                        <h1>Set Time for single Shot and double Shot</h1>\
-                        <h3>Single Shot (Click): %d ms </h3>\
-                        <h3><input type='text' name='date_ss' id='date_ss' size=2 autofocus>  ms</h3> \
-                        <h3>Double Shot (Doubleclick): %d ms</h3>\
-                        <h3><input type='text' name='date_ds' id='date_ds' size=2 autofocus>  ms</h3> \
-                        <h3>You can press and hold the Button for manual Grinding.<br> If you press and hold after a Click or Doubleclick it will save the Time.</h3>\
-                        <div>\
-                        <br><button id=\"save_button\">Save</button>\
-                        </div>\
-                  <script src=\"https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js\"></script>\
-                  <script>\
-                    var ds;\
-                    var ss;\
-                    $('#save_button').click(function(e){\
-                      e.preventDefault();\
-                      ss = $('#date_ss').val();\
-                      ds = $('#date_ds').val();\
-                      $.get('/save?ss=' + ss + '&ds=' + ds, function(data){\
-                        console.log(data);\
-                      });\
-                    });\
-                  </script>\
-                </body>\
-              </html>", tSingleShot, tDualShot);
-    server.send(200, "text/html", htmlResponse);
-}
-
-void handleSave() {
-  // saving times via web
-  if (server.arg("ss")!= "") {
-    //Serial.println("Singleshot: " + server.arg("ss"));
-    tSingleShot = server.arg("ss").toInt();
-    eeWriteInt(0, server.arg("ss").toInt());
-  }
-  if (server.arg("ds")!= "") {
-    //Serial.println("Doubleshot: " + server.arg("ds"));
-    tDualShot = server.arg("ds").toInt();
-    eeWriteInt(4, server.arg("ds").toInt());
-  }
-}
-
-void handleWifi() {
-  // handle WiFi and connect if not connected
-
-  if (WiFi.status() == WL_CONNECTED) {
-    // Connected to WiFi
-    if (bWifiConnected == false) {
-      // Newly connected to WiFi
-      //Serial.println("WiFi connected");
-      //Serial.println("IP address: ");
-      //Serial.println(WiFi.localIP());
-      bWifiConnected = true;
-      if (!MDNS.begin(NAME)) { // Start the mDNS responder for esp8266.local
-        //Serial.println("Error setting up MDNS responder!");
-      }
-      //Serial.println("mDNS responder started");
-    }
-  }
-
-  if (WiFi.status() != WL_CONNECTED) {
-    if (bWifiConnected == true) {
-      // (Re)start WiFi 
-      //Serial.println("WiFi not connected");
-      //Serial.print("Trying to connect to: ");
-      //Serial.println(cSSID);
-      WiFi.mode(WIFI_STA); // explicitly set the ESP8266 to be a WiFi-Client
-      WiFi.persistent(false); // do not store Settings in EEPROM
-      WiFi.hostname(NAME);
-      WiFi.begin(cSSID, cPASSWORD);
-      bWifiConnected = false;
-    }
-  }
-
-  yield(); // allow WiFi and TCP/IP Tasks to run
-  delay(10); // yield not sufficient
-}
-
-void handleDisplay() {
-  display.clear();
-
-  if((bClick == true || bDoubleClick == true) && bPress == false){
-    // display timer grinding Progress
-    bShowOverlay = false;
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.setFont(ArialMT_Plain_10);
-    if(bClick == true) {
-      display.drawString(0, 0, "Single Shot Grinding");
-    } else if (bDoubleClick == true) {
-      display.drawString(0, 0, "Double Shot Grinding");
-    }
-    display.setTextAlignment(TEXT_ALIGN_RIGHT);
-    display.setFont(ArialMT_Plain_16);
-    display.drawString(128, 16, String((millis() - tGrindStart)/1000.0,2) + "/" + String(tGrindPeriod/1000.0,2) + " s");
-    display.drawProgressBar(0, 38, 127, 10, (millis() - tGrindStart) / (tGrindPeriod / 100));
-  }
-
-  if(bPress == true){
-    // display manual grinding and setup Progress
-    bShowOverlay = false;
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.setFont(ArialMT_Plain_10);
-    if(bClick == true) {
-      display.drawString(0, 0, "Saving Single Shot Time");
-    } else if (bDoubleClick == true) {
-      display.drawString(0, 0, "Saving Double Shot Time");
-    } else {
-      display.drawString(0, 0, "Manual Grinding");
-    }
-    display.setTextAlignment(TEXT_ALIGN_RIGHT);
-    display.setFont(ArialMT_Plain_16);
-    display.drawString(128, 16, String(millis() - tGrindStart) + " ms");
-    display.drawProgressBar(0, 38, 127, 10, (millis() - tGrindStart) / (tGrindPeriod / 100));
-  }
-
-  if(bClick == false && bDoubleClick == false && bPress == false){
-    // default Screen
-    if(millis() > tOVERLAY) { 
-      bShowOverlay = false; // disable Overlay
-    } else {
-      bShowOverlay = true; // reenable Overlay
-    }
-    display.setTextAlignment(TEXT_ALIGN_RIGHT);
-    display.setFont(ArialMT_Plain_16);
-    display.drawString(128, 16, "Single " + String(tSingleShot/1000.0,2) + " s");
-    display.drawString(128, 34, "Double " + String(tDualShot/1000.0,2) + " s");
-  }
-  
-  if(bShowOverlay == true) {
-    // display additional Information in Overlay
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-    display.setFont(ArialMT_Plain_10);
-    display.drawString(0, 0, NAME);
-    display.setTextAlignment(TEXT_ALIGN_RIGHT);
-    display.setFont(ArialMT_Plain_10);
-    display.drawString(128, 0, VERSION);
-
-    if (bWifiConnected == true) {
-      // show IP when connected
-      display.setTextAlignment(TEXT_ALIGN_RIGHT);
-      display.setFont(ArialMT_Plain_10);
-      display.drawString(128, 54, WiFi.localIP().toString());
-    }
-  }
-
-  if (bWifiConnected == false) {
-      // show SSID when not connected
-      display.setTextAlignment(TEXT_ALIGN_RIGHT);
-      display.setFont(ArialMT_Plain_10);
-      display.drawString(128, 54, cSSID);
-    }
-
-  display.display();
-}
-
-// *******SETUP*******
 void setup() {
   //Serial.begin(115200); // Start serial
 
@@ -360,7 +193,15 @@ void setup() {
   tSingleShot = eeGetInt(0);
   tDualShot = eeGetInt(4);
 
-//======OTA PART=========================================================
+  // Connect to PostgreSQL database
+  conn = PQconnectdb("host=" + String(db_host) + " port=" + String(db_port) + " user=" + String(db_user) + " password=" + String(db_pass) + " dbname=" + String(db_name));
+  if (PQstatus(conn) != CONNECTION_OK) {
+    Serial.println("Connection to database failed");
+  } else {
+    Serial.println("Connected to database");
+  }
+
+  //======OTA PART=========================================================
   // Port defaults to 8266
   // ArduinoOTA.setPort(8266);
 
@@ -439,7 +280,6 @@ void setup() {
   digitalWrite(pLED, OFF);        // turn LED OFF after Setup
 }
 
-// *******LOOP*******
 void loop() {
   ArduinoOTA.handle();
 
@@ -457,13 +297,13 @@ void loop() {
         eeWriteInt(0, tGrindDuration); // safe single Shot Time
         bClick = false;
         tSingleShot = tGrindDuration;
-        //Serial.println("Single Shot set to " + String(tGrindDuration, DEC) + " ms");
+        logGrindEvent("single_shot_set");
       }
       else if (bDoubleClick == true) {
         eeWriteInt(4, tGrindDuration); // safe double Shot Time
         bDoubleClick = false;
         tDualShot = tGrindDuration;
-        //Serial.println("Double Shot set to " + String(tGrindDuration, DEC) + " ms");
+        logGrindEvent("double_shot_set");
       }
     }
   }
